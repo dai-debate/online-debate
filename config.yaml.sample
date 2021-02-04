@@ -1,0 +1,14 @@
+auth:
+  key_file: <key_file>.json
+
+file_id: <spread sheet id>
+sheets:
+  matches: 0
+  entries: 1
+  judges: 2
+  score: 3
+
+prefix: "<大会名> "
+
+judge_num: 1
+
