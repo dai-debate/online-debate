@@ -1,0 +1,5 @@
+PyYAML
+gspread
+pyzoom
+sphinx
+colorama

@@ -1,0 +1,8 @@
+host_video: false
+participant_video: false
+mute_upon_entry: true
+use_pmi": false
+auto_recording: "cloud"
+waiting_room: true
+meeting_authentication: false
+allow_multiple_device: true
