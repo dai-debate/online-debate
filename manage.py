@@ -100,7 +100,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
     end = gsutils.rowcol_to_a1(2+len(values), 6+judge_num+5)
     sheet.batch_update([
         {'range': f'{start}:{end}', 'values': meetings}
-    ])
+    ], value_input_option='USER_ENTERED')
 
 
 def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
