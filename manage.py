@@ -53,7 +53,8 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
     now = datetime.now()
     year = now.year
-    month, day = values.pop(0)[0].split('/')
+    month, day = values.pop(0)[1].split('/')
+    values.pop(0)
 
     client = ZoomClient(api_key['api-key'], api_key['api-secret'])
 
@@ -63,15 +64,15 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
     for value in values:
         matchName = value[0]
-        hour_s, min_s = value[1].split(':')
-        hour_e, min_e = value[2].split(':')
+        hour_s, min_s = value[2].split(':')
+        hour_e, min_e = value[3].split(':')
         start_time = datetime(year, int(month), int(day), int(hour_s), int(min_s))
         end_time = datetime(year, int(month), int(day), int(hour_e), int(min_e))
         duration = math.ceil((end_time - start_time).total_seconds()/60.0)
-        userId = value[4+judge_num+1] if len(find_user(users, 'email', value[4+judge_num+1])) > 0 else None
-        url = value[4+judge_num+3]
-        meeting_id = value[4+judge_num+4]
-        password = value[4+judge_num+5]
+        userId = value[5+judge_num+1] if len(find_user(users, 'email', value[5+judge_num+1])) > 0 else None
+        url = value[5+judge_num+3]
+        meeting_id = value[5+judge_num+4]
+        password = value[5+judge_num+5]
 
         if url and meeting_id and password:
             meetings.append([url, meeting_id, password])
@@ -93,8 +94,8 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
             else:
                 meetings.append([None, None, None])
 
-    start = gsutils.rowcol_to_a1(2, 4+judge_num+3)
-    end = gsutils.rowcol_to_a1(1+len(values), 4+judge_num+5)
+    start = gsutils.rowcol_to_a1(3, 6+judge_num+3)
+    end = gsutils.rowcol_to_a1(2+len(values), 6+judge_num+5)
     sheet.batch_update([
         {'range': f'{start}:{end}', 'values': meetings}
     ])
