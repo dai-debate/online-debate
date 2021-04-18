@@ -76,6 +76,6 @@ python manage.py -c config.yaml generate-ballot
 
 ## 改善のための貢献
 
-* 使い方に関する質問や不具合の報告、改善の提案は [Issues](/issues) に書き込んで下さい。
+* 使い方に関する質問や不具合の報告、改善の提案は [Issues](https://github.com/dai-debate/online-debate/issues) に書き込んで下さい。
   可能な範囲で対応します。
-* Python のプログラミングに詳しい方は、具体的修正提案を [Pull request](/pulls) として投稿して下さるのも歓迎です。
+* Python のプログラミングに詳しい方は、具体的修正提案を [Pull request](https://github.com/dai-debate/online-debate/pulls) として投稿して下さるのも歓迎です。
