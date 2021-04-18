@@ -1,0 +1,7 @@
+*.json
+*.yaml
+tmp/
+__pycache__/
+rsts/_*/
+*.zip
+memo.txt
