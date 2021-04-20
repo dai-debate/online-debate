@@ -1,5 +1,6 @@
 *.json
 *.yaml
+*.yml
 tmp/
 __pycache__/
 rsts/_*/
