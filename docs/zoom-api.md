@@ -16,33 +16,25 @@ Zoom API を使用するために、アプリケーションを登録します�
   * 既にZoomにサインイン済みの場合にはそのまま次の手順に進んで下さい。
 * 利用許諾に関するダイアログが表示されるので、内容を読んだ上で「Agree」をクリックします。
 * 画面右上の「Develop」→「Build App」をクリックします。
-* OAuth の所にある「Create」をクリックします。
-* 「App Name」は半角英数字であれば何でも構いません。
-  ここでは仮に `dkoshien` とします。
-* 「Choose app type」は「Account-level app」(このアカウントが管理する複数のユーザーの操作を行う事ができる)を選択します。
-* 「Would you like to publish～」は「OFF」に切り替えて下さい。
-* 「Create」をクリックします。
-* 作成したアプリケーションの認証情報が表示されます。
-  以下の情報は後の手順で使用しますので、手元に控えてください。
-  * Client ID
-  * Client Secret
-* Redirect URL for OAuth と Whitelist URL の両方に `https://github.com/dai-debate/online-debate` を入力してください。
-* 「Continue」をクリックします。
-* Basic Information の入力欄は以下の内容を入力して「Continue」をクリックします。
-  * Short Description: `Online debate`
-  * Long Description: `Manage meetings for online debates`
-  * Company Name: 所属団体等を適宜入力してください。
+* JWT の所にある「Create」をクリックします。
+  * 「App Name」は半角英数字であれば何でも構いません。
+    ここでは仮に `online-debate` とします。
+  * 「Short Description」はアプリケーションの説明を記入します。
+    ここではごく簡単に `Online debate` とだけ記入しておきます。
+  * 「Company Name」は、所属団体等を適宜入力して下さい。
     個人の場合は `Personal` とかで問題ないと思います。
     ここでは仮に `NADE` とします。
-  * Name: 使用者の氏名を入力して下さい。
-  * Email Address: 使用者のメールアドレスを入力して下さい。
+  * 「Name」には、使用者の氏名を入力して下さい。
+  * 「Email Address」には、使用者のメールアドレスを入力して下さい。
     個人用ではなく、大会運営用に用意した Google アカウントのもので構いません。
-* Add feature の入力欄になりますが、変更の必要はないので、「Continue」をクリックします。
-* Add scopes の設定になりますので、以下の項目にチェックを入れた後に「Done」をクリックします。
-  * Meeting → View and manage sub account's user meetings
-  * User → View and manage sub account's user information
-  * Room → View and manage sub account's Zoom Rooms information
-* Install your app の下の「Install」をクリックします。
-* 「≪App Name≫がZoomアカウントへのアクセスをリクエストしています」という画面が開くので、「認可」をクリックしてください。
+  * 「Continue」をクリックして下さい。
+* 作成したアプリケーションの認証情報が表示されます。
+  以下の情報は後の手順で使用しますので、手元に控えて下さい。
+  (copyという所をクリックするとクリップボードに情報がコピーされるので、メモに貼り付けてください。)
+  * API Key
+  * API Secret
+* 「Add Feature」は何もせず、「Continue」をクリックして下さい。
+* 「Your app is activated on the account」と表示されたら設定は完了です。
+  ページを閉じて構いません。
 
 [→次の手順に進む](zoom-create-user.md)
