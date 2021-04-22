@@ -1,0 +1,38 @@
+auth:
+  key_file: <key_file>.json
+
+file_id: <spreadsheet id>
+sheets:
+  matches: 0
+  entries: 1
+  judges: 2
+  vote: 3
+  result: 4
+  score: 5
+
+prefix: "<大会名> "
+
+judge_num: 3
+
+ballot:
+  template: 1hiba7wnR3u0dffsJmQTKSC-usT2_84OAk-xZ4VHhAYg
+  title: "<大会名> 投票・採点シート"
+  folder: <folder id>
+
+  to_vote:
+    - ["C4", 0]
+    - ["C7", 3]
+    - ["I12", 5]
+    - ["C8", 6]
+    - ["I19", 8]
+    - ["E36", 9]
+    - ["E25", 10]
+    - ["E38", 11]
+
+  to_ballot:
+    - [0, "C4"]
+    - [1, "E5"]
+    - [4, "C7"]
+    - [5, "C8"]
+    - [[4,5], "E36"]
+    - [6, "H4", true]
