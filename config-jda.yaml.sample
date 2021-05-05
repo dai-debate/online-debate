@@ -6,6 +6,7 @@ sheets:
   matches: 0
   entries: 1
   judges: 2
+  staff: ~
   vote: 3
   result: 4
   score: 5
@@ -13,6 +14,7 @@ sheets:
 prefix: "<大会名> "
 
 judge_num: 3
+staff_num: 0
 
 ballot:
   template: 1Z6aCHLEy2ZXB-dlipBhBCyHh2D6sC7UNrEo1LCUIEm8
