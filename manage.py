@@ -143,6 +143,10 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     for i, value in enumerate(values):
         ballots = []
         for j in range(judge_num):
+
+            if not value[6*j]:
+                continue
+
             new_book = gc.copy(ballot_config['template'])
             ballots.append(new_book.url)
             new_sheet = WorksheetEx.cast(new_book.get_worksheet(0))
@@ -188,10 +192,15 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
                         new_sheet.update_acell(link[1], value[link[0]+j])
                     else:
                         new_sheet.update_acell(link[1], value[link[0]])
+                elif type(link[0]) == str:
+                    cell = sheet_matches.acell(link[0], value_render_option='FORMATTED_VALUE')
+                    new_sheet.update_acell(link[1], cell.value)
                 elif type(link[0]) == list:
                     options = [value[x] for x in link[0]]
                     new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
                 time.sleep(1)
+
+            print(f"{ballot_config['title']} {value[0]} #{j}")
 
         new_ballots.append(ballots)
 
@@ -236,6 +245,8 @@ def main():
             generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], key, settings)
         elif args.command == 'generate-ballot':
             generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
+
+        print('Complete.')
 
 
 if __name__ == "__main__":
