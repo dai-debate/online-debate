@@ -97,6 +97,8 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
             else:
                 meetings.append([None, None, None])
 
+        print(prefix + matchName)
+
     start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+3)
     end = gsutils.rowcol_to_a1(2+len(values), 6+judge_num+staff_num+5)
     sheet.batch_update([
