@@ -4,6 +4,7 @@ import string
 import secrets
 from datetime import datetime
 import math
+import time
 import gspread
 import gspread.utils as gsutils
 from pydrive.auth import GoogleAuth
@@ -190,6 +191,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
                 elif type(link[0]) == list:
                     options = [value[x] for x in link[0]]
                     new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
+                time.sleep(1)
 
         new_ballots.append(ballots)
 
