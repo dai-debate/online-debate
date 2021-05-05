@@ -45,7 +45,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
     def generate_password(length: int = 6):
         chars = string.digits
-        return ''.join(secrets.choice(chars) for x in range(length))
+        return f"'{''.join(secrets.choice(chars) for x in range(length))}"
 
     gc = gspread.authorize(credentials)
 
