@@ -50,3 +50,28 @@ member_list:
     - [1, "F4"]
     - [4, "F6", true]
     - side: "B6"
+
+aggregate:
+  template: 110TumZZkPah1Me__3fzTAcd7u7MKunLSNUqWyprVMJc
+  title: "<大会名> 主審用集計用紙"
+  folder: <folder id>
+
+  to_aggregate:
+    - [0, "C4"]
+    - [1, "E4"]
+    - [4, "C6"]
+    - [5, "C7"]
+
+  link:
+    - ["C12", "C13"]
+    - ["D12", "D13"]
+    - ["E12", "E13"]
+    - ["F12", "F13"]
+    - ["G12", "G13"]
+    - ["H12", "H13"]
+    - ["C19", "C16"]
+    - ["D19", "D16"]
+    - ["E19", "E16"]
+    - ["F19", "F16"]
+    - ["G19", "G16"]
+    - ["H19", "H16"]
