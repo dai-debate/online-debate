@@ -69,8 +69,8 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
         matchName = value[0]
         hour_s, min_s = value[2].split(':')
         hour_e, min_e = value[3].split(':')
-        start_time = datetime(year, int(month), int(day), int(hour_s), int(min_s))
-        end_time = datetime(year, int(month), int(day), int(hour_e), int(min_e))
+        start_time = datetime(int(year), int(month), int(day), int(hour_s), int(min_s))
+        end_time = datetime(int(year), int(month), int(day), int(hour_e), int(min_e))
         duration = math.ceil((end_time - start_time).total_seconds()/60.0)
         userId = value[5+judge_num+staff_num+1] if len(find_user(users, 'email', value[5+judge_num+staff_num+1])) > 0 else None
         url = value[5+judge_num+staff_num+3]
