@@ -174,6 +174,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
 
             row = 2 + j + judge_num * i
             vote = [''] * 12
+            vote[0] = f"'{value[0]}"
             vote[1] = j
             vote[2] = value[6+j]
             vote[4] = f'=IF({gsutils.rowcol_to_a1(row,10)}={gsutils.rowcol_to_a1(row,4)},1,0)'
