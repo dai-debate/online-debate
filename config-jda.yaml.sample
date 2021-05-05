@@ -20,7 +20,6 @@ ballot:
   folder: <folder id>
 
   to_vote:
-    - ["B3", 0]
     - ["B7", 3]
     - ["C62", 5]
     - ["E7", 6]
