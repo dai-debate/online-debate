@@ -273,6 +273,104 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     pass
 
 
+def generate_member_list(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
+                         judge_num: int, member_list_config: Dict[str, Any]):
+    """対戦表に基づき、勝敗・ポイント記入シートを生成する
+
+    :param credentials: Google の認証情報
+    :type credentials: Credentials
+    :param file_id: 管理用スプレッドシートのID
+    :type file_id: str
+    :param sheet_index_matches: 対戦表シートのインデックス
+    :type sheet_index_matches: int
+    :param sheet_index_vote: 投票シートのインデックス
+    :type sheet_index_vote: int
+    :param judge_num: ジャッジの人数
+    :type judge_num: int
+    :param member_list_config: 勝敗・ポイント記入シートの参照関係設定
+    :type member_list_config: Dict[str, Any]
+    """
+    gc = gspread.authorize(credentials)
+
+    book = gc.open_by_key(file_id)
+    sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
+
+    values = sheet_matches.get_all_values()
+    values = values[2:]
+
+    new_member_lists = []
+
+    for i, value in enumerate(values):
+        member_lists = []
+        for j in range(2):
+
+            if not value[4+j]:
+                continue
+
+            side = '肯定' if j == 0 else '否定'
+
+            new_book = gc.copy(member_list_config['template'])
+            member_lists.append(new_book.url)
+            new_sheet = WorksheetEx.cast(new_book.get_worksheet(0))
+
+            new_book.batch_update({
+                'requests': [
+                    {
+                        'updateSpreadsheetProperties': {
+                            'properties': {
+                                'title': f"{member_list_config['title']} {value[0]} {side}"
+                            },
+                            'fields': 'title'
+                        }
+                    }
+                ]
+            })
+
+            gauth = GoogleAuth()
+            gauth.credentials = credentials
+
+            gdrive = GoogleDrive(gauth)
+            gfile = gdrive.CreateFile({'id': new_book.id})
+            gfile.FetchMetadata(fetch_all=True)
+
+            gfile['parents'] = [{'id': member_list_config['folder']}]
+            gfile.Upload()
+
+            for link in member_list_config['to_list']:
+                if type(link) == list:
+                    if type(link[0]) == int:
+                        if len(link) >= 3 and link[2]:
+                            new_sheet.update_acell(link[1], value[link[0]+j])
+                        else:
+                            new_sheet.update_acell(link[1], value[link[0]])
+                    elif type(link[0]) == str:
+                        cell = sheet_matches.acell(link[0], value_render_option='FORMATTED_VALUE')
+                        new_sheet.update_acell(link[1], cell.value)
+                    elif type(link[0]) == list:
+                        options = [value[x] for x in link[0]]
+                        new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
+                elif type(link) == dict:
+                    if 'side' in link:
+                        new_sheet.update_acell(link['side'], side)
+                time.sleep(1)
+
+            print(f"{member_list_config['title']} {value[0]} #{j}")
+
+        new_member_lists.append(member_lists)
+
+    start = gsutils.rowcol_to_a1(3, 5)
+    end = gsutils.rowcol_to_a1(2+len(new_member_lists), 6)
+    target_range = f'{start}:{end}'
+    lists = sheet_matches.get(target_range)
+
+    new_values = [[f'=HYPERLINK("{col}","{lists[i][j]}")' for j, col in enumerate(row)] for i, row in enumerate(new_member_lists)]
+    sheet_matches.batch_update([
+        {'range': f'{start}:{end}', 'values': new_values}
+    ], value_input_option='USER_ENTERED')
+
+    pass
+
+
 def main():
     """メイン関数
     """
@@ -280,7 +378,7 @@ def main():
     parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Config file')
     parser.add_argument('-k', '--key', type=str, default='zoom-key.yaml', help='Zoom Config file')
     parser.add_argument('-s', '--settings', type=str, default='zoom-setting.yaml', help='Zoom Config file')
-    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot'], help='Command')
+    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot', 'generate-member-list'], help='Command')
     args = parser.parse_args()
 
     scope = [
@@ -300,6 +398,8 @@ def main():
             clear_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key)
         elif args.command == 'generate-ballot':
             generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
+        elif args.command == 'generate-member-list':
+            generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['member_list'])
 
         print('Complete.')
 
