@@ -54,9 +54,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
     values = sheet.get_all_values()
 
-    now = datetime.now()
-    year = now.year
-    month, day = values.pop(0)[1].split('/')
+    year, month, day = values.pop(0)[1].split('/')
     values.pop(0)
 
     client = ZoomClient(api_key['api-key'], api_key['api-secret'])
