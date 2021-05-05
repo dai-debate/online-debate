@@ -181,9 +181,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
 
     values = sheet_matches.get_all_values()
-
-    values.pop(0)
-    values.pop(0)
+    values = values[2:]
 
     sheet_vote = WorksheetEx.cast(book.get_worksheet(sheet_index_vote))
     row_count = len(sheet_vote.col_values(1))
@@ -198,7 +196,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
         ballots = []
         for j in range(judge_num):
 
-            if not value[6*j]:
+            if not value[6+j]:
                 continue
 
             new_book = gc.copy(ballot_config['template'])
