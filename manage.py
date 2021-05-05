@@ -12,6 +12,7 @@ from pydrive.drive import GoogleDrive
 from oauth2client.client import Credentials
 from oauth2client.service_account import ServiceAccountCredentials
 from pyzoom import ZoomClient
+from pyzoom import err as zoom_error
 from typing import List, Dict, Any
 from worksheet import WorksheetEx
 
@@ -104,6 +105,57 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
     sheet.batch_update([
         {'range': f'{start}:{end}', 'values': meetings}
     ], value_input_option='USER_ENTERED')
+
+
+def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
+               judge_num: int, staff_num: int, api_key: Dict[str, str]):
+    """試合会場を生成する
+
+    :param credentials: Google の認証情報
+    :type credentials: Credentials
+    :param file_id: 管理用スプレッドシートのID
+    :type file_id: str
+    :param sheet_index: 対戦表シートのインデックス
+    :type sheet_index: int
+    :param judge_num: ジャッジの人数
+    :type judge_num: int
+    :param staff_num: スタッフの人数
+    :type staff_num: int
+    :param api_key: Zoom の APIキー/APIシークレット
+    :type api_key: Dict[str, str]
+    """
+    def delete_meetings(client: ZoomClient, ids: List[str]):
+        for id in ids:
+            try:
+                response = client.raw.get_all_pages(f'/meetings/{id}')
+            except zoom_error.NotFound:
+                continue
+            title = response['topic']
+            response = client.raw.delete(f'/meetings/{id}')
+            print(title)
+            pass
+
+    gc = gspread.authorize(credentials)
+
+    book = gc.open_by_key(file_id)
+    sheet = WorksheetEx.cast(book.get_worksheet(sheet_index))
+
+    values = sheet.get_all_values()
+    values = values[2:]
+    ids = [v[6+judge_num+staff_num+2+1] for v in values]
+
+    client = ZoomClient(api_key['api-key'], api_key['api-secret'])
+
+    delete_meetings(client, ids)
+
+    update_values = [['']*3 for i in range(len(values))]
+    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+3)
+    end = gsutils.rowcol_to_a1(2+len(update_values), 6+judge_num+staff_num+5)
+    sheet.batch_update([
+        {'range': f'{start}:{end}', 'values': update_values}
+    ], value_input_option='USER_ENTERED')
+
+    pass
 
 
 def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
@@ -230,7 +282,7 @@ def main():
     parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Config file')
     parser.add_argument('-k', '--key', type=str, default='zoom-key.yaml', help='Zoom Config file')
     parser.add_argument('-s', '--settings', type=str, default='zoom-setting.yaml', help='Zoom Config file')
-    parser.add_argument('command', type=str, choices=['generate-room', 'generate-ballot'], help='Command')
+    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot'], help='Command')
     args = parser.parse_args()
 
     scope = [
@@ -246,6 +298,8 @@ def main():
 
         if args.command == 'generate-room':
             generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], cfg['staff_num'], key, settings)
+        elif args.command == 'clear-room':
+            clear_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key)
         elif args.command == 'generate-ballot':
             generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
 
