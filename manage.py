@@ -47,7 +47,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
     def generate_password(length: int = 6):
         chars = string.digits
-        return f"'{''.join(secrets.choice(chars) for x in range(length))}"
+        return ''.join(secrets.choice(chars) for x in range(length))
 
     gc = gspread.authorize(credentials)
 
@@ -93,7 +93,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
             response = client.raw.post(f'/users/{userId}/meetings', body=request)
             if response.ok:
                 data = response.json()
-                meetings.append([data['join_url'], data['id'], data['password']])
+                meetings.append([data['join_url'], f"'{data['id']}", f"'{data['password']}"])
             else:
                 meetings.append([None, None, None])
 
