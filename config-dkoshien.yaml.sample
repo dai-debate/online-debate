@@ -38,3 +38,15 @@ ballot:
     - [5, "C8"]
     - [[4,5], "E36"]
     - [6, "H5", true]
+
+member_list:
+  template: 1KifmaqP6p9_BWwJWQ5VKSH1EmzBJDmtE1Xo6AidSk9U
+  title: "<大会名> 出場メンバー届"
+  folder: <folder id>
+
+  to_list:
+    - ["B1", "K3"]
+    - [0, "D4"]
+    - [1, "F4"]
+    - [4, "F6", true]
+    - side: "B6"
