@@ -5,6 +5,7 @@ import secrets
 from datetime import datetime
 import math
 import time
+import re
 import gspread
 import gspread.utils as gsutils
 from pydrive.auth import GoogleAuth
@@ -371,6 +372,109 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     pass
 
 
+def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
+                       judge_num: int, staff_num: int, aggregate_config: Dict[str, Any]):
+    """対戦表に基づき、勝敗・ポイント記入シートを生成する
+
+    :param credentials: Google の認証情報
+    :type credentials: Credentials
+    :param file_id: 管理用スプレッドシートのID
+    :type file_id: str
+    :param sheet_index_matches: 対戦表シートのインデックス
+    :type sheet_index_matches: int
+    :param sheet_index_vote: 投票シートのインデックス
+    :type sheet_index_vote: int
+    :param judge_num: ジャッジの人数
+    :type judge_num: int
+    :param staff_num: スタッフの人数
+    :type staff_num: int
+    :param aggregate_config: 勝敗・ポイント記入シートの参照関係設定
+    :type aggregate_config: Dict[str, Any]
+    """
+    gc = gspread.authorize(credentials)
+
+    book = gc.open_by_key(file_id)
+    sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
+
+    values = sheet_matches.get_all_values(value_render_option='FORMULA')
+    values = values[2:]
+
+    new_aggregates = []
+    pattern = r'=HYPERLINK\("https://docs\.google\.com/spreadsheets/d/(.*?)","(.*?)"\)'
+
+    for i, value in enumerate(values):
+
+        new_book = gc.copy(aggregate_config['template'])
+        new_aggregates.append(new_book.url)
+        new_sheet = WorksheetEx.cast(new_book.get_worksheet(0))
+
+        new_book.batch_update({
+            'requests': [
+                {
+                    'updateSpreadsheetProperties': {
+                        'properties': {
+                            'title': f"{aggregate_config['title']} {value[0]}"
+                        },
+                        'fields': 'title'
+                    }
+                }
+            ]
+        })
+
+        gauth = GoogleAuth()
+        gauth.credentials = credentials
+
+        gdrive = GoogleDrive(gauth)
+        gfile = gdrive.CreateFile({'id': new_book.id})
+        gfile.FetchMetadata(fetch_all=True)
+
+        gfile['parents'] = [{'id': aggregate_config['folder']}]
+        gfile.Upload()
+
+        for link in aggregate_config['to_aggregate']:
+            if type(link) == list:
+                if type(link[0]) == int:
+                    new_sheet.update_acell(link[1], value[link[0]])
+                elif type(link[0]) == str:
+                    cell = sheet_matches.acell(link[0], value_render_option='FORMATTED_VALUE')
+                    new_sheet.update_acell(link[1], cell.value)
+                elif type(link[0]) == list:
+                    options = [value[x] for x in link[0]]
+                    new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
+            time.sleep(1)
+
+        links = [''] * len(aggregate_config['link'])
+        for j in range(judge_num):
+
+            match = re.match(pattern, value[6+j])
+            if not match:
+                continue
+
+            ballot = match.group(1)
+
+            for k, link in enumerate(aggregate_config['link']):
+                if link[2] == 'POINT':
+                    links[k] = links[k] + f'{"=" if j==0 else "+"}IMPORTRANGE("{ballot}","{link[0]}")'
+                elif link[2] == 'VOTE_AFF':
+                    links[k] = links[k] + f'{"=" if j==0 else "+"}IF(IMPORTRANGE("{ballot}","{link[0]}")="肯定",1,0)'
+                elif link[2] == 'VOTE_NEG':
+                    links[k] = links[k] + f'{"=" if j==0 else "+"}IF(IMPORTRANGE("{ballot}","{link[0]}")="否定",1,0)'
+
+        for k, link in enumerate(aggregate_config['link']):
+            new_sheet.update_acell(link[1], links[k])
+            time.sleep(1)
+
+        print(f"{aggregate_config['title']} {value[0]}")
+
+    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+6)
+    end = gsutils.rowcol_to_a1(2+len(new_aggregates), 6+judge_num+staff_num+6)
+    sheet_matches.batch_update([
+        {'range': f'{start}:{end}', 'values': [[f'=HYPERLINK("{v}","Link")'] for v in new_aggregates]}
+    ], value_input_option='USER_ENTERED')
+
+    pass
+
+
 def main():
     """メイン関数
     """
@@ -378,7 +482,7 @@ def main():
     parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Config file')
     parser.add_argument('-k', '--key', type=str, default='zoom-key.yaml', help='Zoom Config file')
     parser.add_argument('-s', '--settings', type=str, default='zoom-setting.yaml', help='Zoom Config file')
-    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot', 'generate-member-list'], help='Command')
+    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot', 'generate-member-list', 'generate-aggregate'], help='Command')
     args = parser.parse_args()
 
     scope = [
@@ -400,6 +504,8 @@ def main():
             generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
         elif args.command == 'generate-member-list':
             generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['member_list'])
+        elif args.command == 'generate-aggregate':
+            generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'])
 
         print('Complete.')
 
