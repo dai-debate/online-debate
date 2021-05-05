@@ -17,7 +17,7 @@ from worksheet import WorksheetEx
 
 
 def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
-                  prefix: str, judge_num: int, api_key: Dict[str, str], settings: Dict[str, Any]):
+                  prefix: str, judge_num: int, staff_num: int, api_key: Dict[str, str], settings: Dict[str, Any]):
     """試合会場を生成する
 
     :param credentials: Google の認証情報
@@ -30,6 +30,8 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
     :type prefix: str
     :param judge_num: ジャッジの人数
     :type judge_num: int
+    :param staff_num: スタッフの人数
+    :type staff_num: int
     :param api_key: Zoom の APIキー/APIシークレット
     :type api_key: Dict[str, str]
     :param settings: Zoom ミーティングの設定情報
@@ -70,10 +72,10 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
         start_time = datetime(year, int(month), int(day), int(hour_s), int(min_s))
         end_time = datetime(year, int(month), int(day), int(hour_e), int(min_e))
         duration = math.ceil((end_time - start_time).total_seconds()/60.0)
-        userId = value[5+judge_num+1] if len(find_user(users, 'email', value[5+judge_num+1])) > 0 else None
-        url = value[5+judge_num+3]
-        meeting_id = value[5+judge_num+4]
-        password = value[5+judge_num+5]
+        userId = value[5+judge_num+staff_num+1] if len(find_user(users, 'email', value[5+judge_num+staff_num+1])) > 0 else None
+        url = value[5+judge_num+staff_num+3]
+        meeting_id = value[5+judge_num+staff_num+4]
+        password = value[5+judge_num+staff_num+5]
 
         if url and meeting_id and password:
             meetings.append([url, meeting_id, password])
@@ -95,8 +97,8 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
             else:
                 meetings.append([None, None, None])
 
-    start = gsutils.rowcol_to_a1(3, 6+judge_num+3)
-    end = gsutils.rowcol_to_a1(2+len(values), 6+judge_num+5)
+    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+3)
+    end = gsutils.rowcol_to_a1(2+len(values), 6+judge_num+staff_num+5)
     sheet.batch_update([
         {'range': f'{start}:{end}', 'values': meetings}
     ], value_input_option='USER_ENTERED')
@@ -241,7 +243,7 @@ def main():
         credentials = ServiceAccountCredentials.from_json_keyfile_name(cfg['auth']['key_file'], scope)
 
         if args.command == 'generate-room':
-            generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], key, settings)
+            generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], cfg['staff_num'], key, settings)
         elif args.command == 'generate-ballot':
             generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
 
