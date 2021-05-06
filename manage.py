@@ -350,7 +350,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
                         new_sheet.update_acell(link['side'], side)
                 time.sleep(1)
 
-            print(f"{member_list_config['title']} {value[0]} #{j}")
+            print(f"{member_list_config['title']} {value[0]} {side}")
 
         new_member_lists.append(member_lists)
 
