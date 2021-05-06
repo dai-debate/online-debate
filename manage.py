@@ -275,7 +275,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
 
 
 def generate_member_list(credentials: Credentials, file_id: str, sheet_index_matches: int, member_list_config: Dict[str, Any]):
-    """対戦表に基づき、勝敗・ポイント記入シートを生成する
+    """対戦表に基づき、出場メンバー届を生成する
 
     :param credentials: Google の認証情報
     :type credentials: Credentials
@@ -369,7 +369,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
 
 def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_matches: int,
                        judge_num: int, staff_num: int, aggregate_config: Dict[str, Any]):
-    """対戦表に基づき、勝敗・ポイント記入シートを生成する
+    """対戦表に基づき、集計用紙を生成する
 
     :param credentials: Google の認証情報
     :type credentials: Credentials
