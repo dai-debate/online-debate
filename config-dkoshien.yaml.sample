@@ -76,3 +76,21 @@ aggregate:
     - ["F19", "F16"]
     - ["G19", "G16"]
     - ["H19", "H16"]
+
+advice:
+  template: 1a1gzCEF-hspODhsypp_EzOx7sRUFacBpiIp_VZv_U7Y
+  title: "<大会名> 公式練習会 アドバイスシート"
+  folder: <folder id>
+
+  to_advice:
+    - [0, "C4"]
+    - [1, "E4"]
+    - ["B1", "H3"]
+    - aff:
+        - "B6"
+        - [4, "E6"]
+        - [7, "G4"]
+      neg:
+        - "B6"
+        - [5, "E6"]
+        - [8, "G4"]

@@ -468,6 +468,114 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
     pass
 
 
+def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches: int,
+                    judge_num: int, staff_num: int, advice_config: Dict[str, Any]):
+    """対戦表に基づき、アドバイスシートを生成する
+
+    :param credentials: Google の認証情報
+    :type credentials: Credentials
+    :param file_id: 管理用スプレッドシートのID
+    :type file_id: str
+    :param sheet_index_matches: 対戦表シートのインデックス
+    :type sheet_index_matches: int
+    :param judge_num: ジャッジの人数
+    :type judge_num: int
+    :param staff_num: スタッフの人数
+    :type staff_num: int
+    :param advice_config: 勝敗・ポイント記入シートの参照関係設定
+    :type advice_config: Dict[str, Any]
+    """
+    gc = gspread.authorize(credentials)
+
+    book = gc.open_by_key(file_id)
+    sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
+
+    values = sheet_matches.get_all_values()
+    values = values[2:]
+
+    new_advice = []
+
+    for i, value in enumerate(values):
+
+        advice_list = []
+
+        for j in range(2):
+
+            if not value[4+j]:
+                continue
+
+            side = '肯定' if j == 0 else '否定'
+
+            new_book = gc.copy(advice_config['template'])
+            advice_list.append(new_book.url)
+            new_sheet = WorksheetEx.cast(new_book.get_worksheet(0))
+
+            new_book.batch_update({
+                'requests': [
+                    {
+                        'updateSpreadsheetProperties': {
+                            'properties': {
+                                'title': f"{advice_config['title']} {value[0]} {side}"
+                            },
+                            'fields': 'title'
+                        }
+                    }
+                ]
+            })
+
+            gauth = GoogleAuth()
+            gauth.credentials = credentials
+
+            gdrive = GoogleDrive(gauth)
+            gfile = gdrive.CreateFile({'id': new_book.id})
+            gfile.FetchMetadata(fetch_all=True)
+
+            gfile['parents'] = [{'id': advice_config['folder']}]
+            gfile.Upload()
+
+            for link in advice_config['to_advice']:
+                if type(link) == list:
+                    if type(link[0]) == int:
+                        if len(link) >= 3 and link[2]:
+                            new_sheet.update_acell(link[1], value[link[0]+j])
+                        else:
+                            new_sheet.update_acell(link[1], value[link[0]])
+                    elif type(link[0]) == str:
+                        cell = sheet_matches.acell(link[0], value_render_option='FORMATTED_VALUE')
+                        new_sheet.update_acell(link[1], cell.value)
+                    elif type(link[0]) == list:
+                        options = [value[x] for x in link[0]]
+                        new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
+                elif type(link) == dict:
+                    if 'aff' in link:
+                        for x in link['aff']:
+                            if type(x) == str:
+                                new_sheet.update_acell(x, side)
+                            if type(x) == list:
+                                new_sheet.update_acell(x[1], value[x[0]])
+                    if 'neg' in link:
+                        for x in link['neg']:
+                            if type(x) == str:
+                                new_sheet.update_acell(x, side)
+                            if type(x) == list:
+                                new_sheet.update_acell(x[1], value[x[0]])
+                time.sleep(1)
+
+            print(f"{advice_config['title']} {value[0]} {side}")
+
+        new_advice.append(advice_list)
+
+    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+7)
+    end = gsutils.rowcol_to_a1(2+len(new_advice), 6+judge_num+staff_num+8)
+
+    new_values = [[f'=HYPERLINK("{col}","Link")' for col in row] for row in new_advice]
+    sheet_matches.batch_update([
+        {'range': f'{start}:{end}', 'values': new_values}
+    ], value_input_option='USER_ENTERED')
+
+    pass
+
+
 def main():
     """メイン関数
     """
@@ -475,7 +583,7 @@ def main():
     parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Config file')
     parser.add_argument('-k', '--key', type=str, default='zoom-key.yaml', help='Zoom Config file')
     parser.add_argument('-s', '--settings', type=str, default='zoom-setting.yaml', help='Zoom Config file')
-    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot', 'generate-member-list', 'generate-aggregate'], help='Command')
+    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot', 'generate-member-list', 'generate-aggregate', 'generate-advice'], help='Command')
     args = parser.parse_args()
 
     scope = [
@@ -499,6 +607,8 @@ def main():
             generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['member_list'])
         elif args.command == 'generate-aggregate':
             generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'])
+        elif args.command == 'generate-advice':
+            generate_advice(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['advice'])
 
         print('Complete.')
 
