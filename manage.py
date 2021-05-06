@@ -274,8 +274,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     pass
 
 
-def generate_member_list(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
-                         judge_num: int, member_list_config: Dict[str, Any]):
+def generate_member_list(credentials: Credentials, file_id: str, sheet_index_matches: int, member_list_config: Dict[str, Any]):
     """対戦表に基づき、勝敗・ポイント記入シートを生成する
 
     :param credentials: Google の認証情報
@@ -284,10 +283,6 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     :type file_id: str
     :param sheet_index_matches: 対戦表シートのインデックス
     :type sheet_index_matches: int
-    :param sheet_index_vote: 投票シートのインデックス
-    :type sheet_index_vote: int
-    :param judge_num: ジャッジの人数
-    :type judge_num: int
     :param member_list_config: 勝敗・ポイント記入シートの参照関係設定
     :type member_list_config: Dict[str, Any]
     """
@@ -372,7 +367,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     pass
 
 
-def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
+def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_matches: int,
                        judge_num: int, staff_num: int, aggregate_config: Dict[str, Any]):
     """対戦表に基づき、勝敗・ポイント記入シートを生成する
 
@@ -382,8 +377,6 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
     :type file_id: str
     :param sheet_index_matches: 対戦表シートのインデックス
     :type sheet_index_matches: int
-    :param sheet_index_vote: 投票シートのインデックス
-    :type sheet_index_vote: int
     :param judge_num: ジャッジの人数
     :type judge_num: int
     :param staff_num: スタッフの人数
@@ -503,9 +496,9 @@ def main():
         elif args.command == 'generate-ballot':
             generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
         elif args.command == 'generate-member-list':
-            generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['member_list'])
+            generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['member_list'])
         elif args.command == 'generate-aggregate':
-            generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'])
+            generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'])
 
         print('Complete.')
 
