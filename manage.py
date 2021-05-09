@@ -547,13 +547,13 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
                         options = [value[x] for x in link[0]]
                         new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
                 elif type(link) == dict:
-                    if 'aff' in link:
+                    if 'aff' in link and side == '肯定':
                         for x in link['aff']:
                             if type(x) == str:
                                 new_sheet.update_acell(x, side)
                             if type(x) == list:
                                 new_sheet.update_acell(x[1], value[x[0]])
-                    if 'neg' in link:
+                    if 'neg' in link and side == '否定':
                         for x in link['neg']:
                             if type(x) == str:
                                 new_sheet.update_acell(x, side)
