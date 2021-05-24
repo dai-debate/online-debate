@@ -79,7 +79,7 @@ aggregate:
 
 advice:
   template: 1a1gzCEF-hspODhsypp_EzOx7sRUFacBpiIp_VZv_U7Y
-  title: "<大会名> 公式練習会 アドバイスシート"
+  title: "<大会名> アドバイスシート"
   folder: <folder id>
 
   to_advice:
