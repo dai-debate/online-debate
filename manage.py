@@ -228,12 +228,12 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
             gfile.Upload()
 
             row = 2 + j + judge_num * i
-            vote = [''] * 12
+            vote = [''] * 11
             vote[0] = f"'{value[0]}"
             vote[1] = j
             vote[2] = value[6+j]
-            vote[4] = f'=IF({gsutils.rowcol_to_a1(row,10)}={gsutils.rowcol_to_a1(row,4)},1,0)'
-            vote[7] = f'=IF({gsutils.rowcol_to_a1(row,10)}={gsutils.rowcol_to_a1(row,7)},1,0)'
+            vote[4] = f'=IF({gsutils.rowcol_to_a1(row,10)}="肯定",1,0)'
+            vote[7] = f'=IF({gsutils.rowcol_to_a1(row,10)}="否定",1,0)'
             for link in ballot_config['to_vote']:
                 vote[link[1]] = f'=IMPORTRANGE("{new_book.id}","{new_sheet.title}!{link[0]}")'
                 pass
