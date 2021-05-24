@@ -549,15 +549,19 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
                 elif type(link) == dict:
                     if 'aff' in link and side == '肯定':
                         for x in link['aff']:
-                            if type(x) == str:
+                            if type(x) == int:
+                                new_sheet.update_acell(link[1], value[link[0]])
+                            elif type(x) == str:
                                 new_sheet.update_acell(x, side)
-                            if type(x) == list:
+                            elif type(x) == list:
                                 new_sheet.update_acell(x[1], value[x[0]])
                     if 'neg' in link and side == '否定':
                         for x in link['neg']:
-                            if type(x) == str:
+                            if type(x) == int:
+                                new_sheet.update_acell(link[1], value[link[0]])
+                            elif type(x) == str:
                                 new_sheet.update_acell(x, side)
-                            if type(x) == list:
+                            elif type(x) == list:
                                 new_sheet.update_acell(x[1], value[x[0]])
                 time.sleep(1)
 
