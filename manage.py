@@ -459,8 +459,8 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
 
         print(f"{aggregate_config['title']} {value[0]}")
 
-    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+6)
-    end = gsutils.rowcol_to_a1(2+len(new_aggregates), 6+judge_num+staff_num+6)
+    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+9)
+    end = gsutils.rowcol_to_a1(2+len(new_aggregates), 6+judge_num+staff_num+9)
     sheet_matches.batch_update([
         {'range': f'{start}:{end}', 'values': [[f'=HYPERLINK("{v}","Link")'] for v in new_aggregates]}
     ], value_input_option='USER_ENTERED')
@@ -569,14 +569,60 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
 
         new_advice.append(advice_list)
 
-    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+7)
-    end = gsutils.rowcol_to_a1(2+len(new_advice), 6+judge_num+staff_num+8)
+    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+10)
+    end = gsutils.rowcol_to_a1(2+len(new_advice), 6+judge_num+staff_num+11)
 
     new_values = [[f'=HYPERLINK("{col}","Link")' for col in row] for row in new_advice]
     sheet_matches.batch_update([
         {'range': f'{start}:{end}', 'values': new_values}
     ], value_input_option='USER_ENTERED')
 
+    pass
+
+
+def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int,
+                judge_num: int, staff_num: int, api_key: Dict[str, str]):
+    """Zoomミーティングとライブストリーミングの関連付けを行う
+
+    :param credentials: Google の認証情報
+    :type credentials: Credentials
+    :param file_id: 管理用スプレッドシートのID
+    :type file_id: str
+    :param sheet_index_matches: 対戦表シートのインデックス
+    :type sheet_index_matches: int
+    :param judge_num: ジャッジの人数
+    :type judge_num: int
+    :param staff_num: スタッフの人数
+    :type staff_num: int
+    :param api_key: Zoom の APIキー/APIシークレット
+    :type api_key: Dict[str, str]
+    :raises RuntimeError: 関連付けに失敗した場合に例外を送出
+    """
+    gc = gspread.authorize(credentials)
+
+    book = gc.open_by_key(file_id)
+    sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
+
+    values = sheet_matches.get_all_values()
+    values = values[2:]
+
+    client = ZoomClient(api_key['api-key'], api_key['api-secret'])
+
+    for value in values:
+        meeting_id = value[5+judge_num+staff_num+4]
+        stream_url = value[5+judge_num+staff_num+6]
+        stream_key = value[5+judge_num+staff_num+7]
+        page_url = value[5+judge_num+staff_num+8]
+
+        if meeting_id and stream_url and stream_key and page_url:
+            response = client.raw.patch(f'/meetings/{meeting_id}/livestream', body={
+                'stream_url': stream_url,
+                'stream_key': stream_key,
+                'page_url': page_url,
+            })
+            if not response.ok:
+                raise RuntimeError(f'Update live failed: {meeting_id}')
+        print(value[0])
     pass
 
 
@@ -587,7 +633,15 @@ def main():
     parser.add_argument('-c', '--config', type=str, default='config.yaml', help='Config file')
     parser.add_argument('-k', '--key', type=str, default='zoom-key.yaml', help='Zoom Config file')
     parser.add_argument('-s', '--settings', type=str, default='zoom-setting.yaml', help='Zoom Config file')
-    parser.add_argument('command', type=str, choices=['generate-room', 'clear-room', 'generate-ballot', 'generate-member-list', 'generate-aggregate', 'generate-advice'], help='Command')
+    parser.add_argument('command', type=str, choices=[
+        'generate-room',
+        'clear-room',
+        'generate-ballot',
+        'generate-member-list',
+        'generate-aggregate',
+        'generate-advice',
+        'update-live'
+    ], help='Command')
     args = parser.parse_args()
 
     scope = [
@@ -613,6 +667,8 @@ def main():
             generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'])
         elif args.command == 'generate-advice':
             generate_advice(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['advice'])
+        elif args.command == 'update-live':
+            update_live(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key)
 
         print('Complete.')
 
