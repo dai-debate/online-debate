@@ -626,6 +626,116 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
     pass
 
 
+def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
+                  judge_num: int, ballot_config: Dict[str, Any]):
+    """対戦表の変更点を勝敗・ポイント記入シートに反映する
+
+    :param credentials: Google の認証情報
+    :type credentials: Credentials
+    :param file_id: 管理用スプレッドシートのID
+    :type file_id: str
+    :param sheet_index_matches: 対戦表シートのインデックス
+    :type sheet_index_matches: int
+    :param sheet_index_vote: 投票シートのインデックス
+    :type sheet_index_vote: int
+    :param judge_num: ジャッジの人数
+    :type judge_num: int
+    :param ballot_config: 勝敗・ポイント記入シートの参照関係設定
+    :type ballot_config: Dict[str, Any]
+    """
+    gc = gspread.authorize(credentials)
+
+    book = gc.open_by_key(file_id)
+    sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
+    sheet_vote = WorksheetEx.cast(book.get_worksheet(sheet_index_vote))
+
+    values = sheet_matches.get_all_values(value_render_option='FORMULA')
+    values = values[2:]
+
+    pattern = r'=HYPERLINK\("https://docs\.google\.com/spreadsheets/d/(.*?)","(.*?)"\)'
+
+    for i, value in enumerate(values):
+
+        match = re.match(pattern, value[4])
+        if match:
+            value[4] = match.group(2)
+
+        match = re.match(pattern, value[5])
+        if match:
+            value[5] = match.group(2)
+
+        for j in range(judge_num):
+
+            if not value[6+j]:
+                continue
+
+            match = re.match(pattern, value[6+j])
+            if not match:
+
+                new_book = gc.copy(ballot_config['template'])
+                new_sheet = WorksheetEx.cast(new_book.get_worksheet(0))
+
+                new_book.batch_update({
+                    'requests': [
+                        {
+                            'updateSpreadsheetProperties': {
+                                'properties': {
+                                    'title': f"{ballot_config['title']} {value[0]} #{j}"
+                                },
+                                'fields': 'title'
+                            }
+                        }
+                    ]
+                })
+
+                gauth = GoogleAuth()
+                gauth.credentials = credentials
+
+                gdrive = GoogleDrive(gauth)
+                gfile = gdrive.CreateFile({'id': new_book.id})
+                gfile.FetchMetadata(fetch_all=True)
+
+                gfile['parents'] = [{'id': ballot_config['folder']}]
+                gfile.Upload()
+
+                row = 2 + j + judge_num * i
+                vote = [''] * 11
+                vote[0] = f"'{value[0]}"
+                vote[1] = j
+                vote[2] = value[6+j]
+                vote[4] = f'=IF({gsutils.rowcol_to_a1(row,10)}="肯定",1,0)'
+                vote[7] = f'=IF({gsutils.rowcol_to_a1(row,10)}="否定",1,0)'
+                for link in ballot_config['to_vote']:
+                    vote[link[1]] = f'=IMPORTRANGE("{new_book.id}","{new_sheet.title}!{link[0]}")'
+                    pass
+
+                start = gsutils.rowcol_to_a1(row, 1)
+                end = gsutils.rowcol_to_a1(row, 11)
+                sheet_vote.batch_update([
+                    {'range': f'{start}:{end}', 'values': [vote]}
+                ], value_input_option='USER_ENTERED')
+
+                for link in ballot_config['to_ballot']:
+                    if type(link[0]) == int:
+                        if len(link) >= 3 and link[2]:
+                            new_sheet.update_acell(link[1], value[link[0]+j])
+                        else:
+                            new_sheet.update_acell(link[1], value[link[0]])
+                    elif type(link[0]) == str:
+                        cell = sheet_matches.acell(link[0], value_render_option='FORMATTED_VALUE')
+                        new_sheet.update_acell(link[1], cell.value)
+                    elif type(link[0]) == list:
+                        options = [value[x] for x in link[0]]
+                        new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
+                    time.sleep(1)
+
+                sheet_matches.update_cell(3+i, 7+j, f'=HYPERLINK("{new_book.url}","{value[6+j]}")')
+
+                print(f"{ballot_config['title']} {value[0]} #{j}")
+
+    pass
+
+
 def main():
     """メイン関数
     """
@@ -640,7 +750,8 @@ def main():
         'generate-member-list',
         'generate-aggregate',
         'generate-advice',
-        'update-live'
+        'update-live',
+        'update-ballot',
     ], help='Command')
     args = parser.parse_args()
 
@@ -669,6 +780,8 @@ def main():
             generate_advice(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['advice'])
         elif args.command == 'update-live':
             update_live(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key)
+        elif args.command == 'update-ballot':
+            update_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
 
         print('Complete.')
 
