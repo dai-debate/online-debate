@@ -62,18 +62,20 @@ aggregate:
     - ["B1", "I3"]
 
   link:
-    - ["C12", "C13"]
-    - ["D12", "D13"]
-    - ["E12", "E13"]
-    - ["F12", "F13"]
-    - ["G12", "G13"]
-    - ["H12", "H13"]
-    - ["C19", "C16"]
-    - ["D19", "D16"]
-    - ["E19", "E16"]
-    - ["F19", "F16"]
-    - ["G19", "G16"]
-    - ["H19", "H16"]
+    - ["C12", "C13", "POINT"]
+    - ["D12", "D13", "POINT"]
+    - ["E12", "E13", "POINT"]
+    - ["F12", "F13", "POINT"]
+    - ["G12", "G13", "POINT"]
+    - ["H12", "H13", "POINT"]
+    - ["C19", "C16", "POINT"]
+    - ["D19", "D16", "POINT"]
+    - ["E19", "E16", "POINT"]
+    - ["F19", "F16", "POINT"]
+    - ["G19", "G16", "POINT"]
+    - ["H19", "H16", "POINT"]
+    - ["C34", "I6", "VOTE_AFF"]
+    - ["C34", "I7", "VOTE_NEG"]
 
 advice:
   template: 1a1gzCEF-hspODhsypp_EzOx7sRUFacBpiIp_VZv_U7Y
