@@ -6,6 +6,7 @@ from datetime import datetime
 import math
 import time
 import re
+import sys
 import gspread
 import gspread.utils as gsutils
 from pydrive.auth import GoogleAuth
@@ -19,7 +20,7 @@ from worksheet import WorksheetEx
 
 
 def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
-                  prefix: str, judge_num: int, staff_num: int, api_key: Dict[str, str], settings: Dict[str, Any]):
+                  prefix: str, judge_num: int, staff_num: int, api_key: Dict[str, str], settings: Dict[str, Any], **kwargs):
     """試合会場を生成する
 
     :param credentials: Google の認証情報
@@ -51,6 +52,9 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
         chars = string.digits
         return ''.join(secrets.choice(chars) for x in range(length))
 
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
+
     gc = gspread.authorize(credentials)
 
     book = gc.open_by_key(file_id)
@@ -67,7 +71,14 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
     meetings = []
 
-    for value in values:
+    for i, value in enumerate(values):
+
+        if i < offset:
+            continue
+
+        if i >= limit:
+            break
+
         matchName = value[0]
         hour_s, min_s = value[2].split(':')
         hour_e, min_e = value[3].split(':')
@@ -101,15 +112,15 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
         print(prefix + matchName)
 
-    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+3)
-    end = gsutils.rowcol_to_a1(2+len(values), 6+judge_num+staff_num+5)
+    start = gsutils.rowcol_to_a1(3+offset, 6+judge_num+staff_num+3)
+    end = gsutils.rowcol_to_a1(2+len(meetings)+offset, 6+judge_num+staff_num+5)
     sheet.batch_update([
         {'range': f'{start}:{end}', 'values': meetings}
     ], value_input_option='USER_ENTERED')
 
 
 def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
-               judge_num: int, staff_num: int, api_key: Dict[str, str]):
+               judge_num: int, staff_num: int, api_key: Dict[str, str], **kwargs):
     """試合会場を生成する
 
     :param credentials: Google の認証情報
@@ -125,8 +136,16 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
     :param api_key: Zoom の APIキー/APIシークレット
     :type api_key: Dict[str, str]
     """
-    def delete_meetings(client: ZoomClient, ids: List[str]):
-        for id in ids:
+    def delete_meetings(client: ZoomClient, ids: List[str], offset: int, limit: int):
+        count = 0
+        for i, id in enumerate(ids):
+
+            if i < offset:
+                continue
+
+            if i >= limit:
+                break
+
             try:
                 response = client.raw.get_all_pages(f'/meetings/{id}')
             except zoom_error.NotFound:
@@ -134,7 +153,12 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
             title = response['topic']
             response = client.raw.delete(f'/meetings/{id}')
             print(title)
-            pass
+            count += 1
+
+        return count
+
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
     gc = gspread.authorize(credentials)
 
@@ -147,11 +171,11 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
 
     client = ZoomClient(api_key['api-key'], api_key['api-secret'])
 
-    delete_meetings(client, ids)
+    count = delete_meetings(client, ids, offset, limit)
 
-    update_values = [['']*3 for i in range(len(values))]
-    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+3)
-    end = gsutils.rowcol_to_a1(2+len(update_values), 6+judge_num+staff_num+5)
+    update_values = [['']*3 for i in range(count)]
+    start = gsutils.rowcol_to_a1(3+offset, 6+judge_num+staff_num+3)
+    end = gsutils.rowcol_to_a1(2+len(update_values)+offset, 6+judge_num+staff_num+5)
     sheet.batch_update([
         {'range': f'{start}:{end}', 'values': update_values}
     ], value_input_option='USER_ENTERED')
@@ -160,7 +184,7 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
 
 
 def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
-                    judge_num: int, ballot_config: Dict[str, Any]):
+                    judge_num: int, ballot_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、勝敗・ポイント記入シートを生成する
 
     :param credentials: Google の認証情報
@@ -176,6 +200,10 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     :param ballot_config: 勝敗・ポイント記入シートの参照関係設定
     :type ballot_config: Dict[str, Any]
     """
+
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
+
     gc = gspread.authorize(credentials)
 
     book = gc.open_by_key(file_id)
@@ -186,19 +214,30 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
 
     sheet_vote = WorksheetEx.cast(book.get_worksheet(sheet_index_vote))
     row_count = len(sheet_vote.col_values(1))
-    if row_count > 1:
-        sheet_vote.delete_rows(2, row_count)
-    sheet_vote = WorksheetEx.cast(book.get_worksheet(sheet_index_vote))
+    if offset <= 0:
+        if row_count > 1:
+            sheet_vote.delete_rows(2, row_count)
+        sheet_vote = WorksheetEx.cast(book.get_worksheet(sheet_index_vote))
 
     votes = []
     new_ballots = []
+    actual_judge_num = 0
 
     for i, value in enumerate(values):
+
+        if i < offset:
+            continue
+
+        if i >= limit:
+            break
+
         ballots = []
         for j in range(judge_num):
 
             if not value[6+j]:
                 continue
+
+            actual_judge_num += 1
 
             new_book = gc.copy(ballot_config['template'])
             ballots.append(new_book.url)
@@ -227,7 +266,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
             gfile['parents'] = [{'id': ballot_config['folder']}]
             gfile.Upload()
 
-            row = 2 + j + judge_num * i
+            row = row_count + actual_judge_num
             vote = [''] * 11
             vote[0] = f"'{value[0]}"
             vote[1] = j
@@ -260,8 +299,8 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
 
     sheet_vote.append_rows(votes, value_input_option='USER_ENTERED', insert_data_option='INSERT_ROWS')
 
-    start = gsutils.rowcol_to_a1(3, 7)
-    end = gsutils.rowcol_to_a1(2+len(new_ballots), 6+judge_num)
+    start = gsutils.rowcol_to_a1(3+offset, 7)
+    end = gsutils.rowcol_to_a1(2+len(new_ballots)+offset, 6+judge_num)
     target_range = f'{start}:{end}' if judge_num > 1 or len(new_ballots) > 2 else f'{start}'
     judges = sheet_matches.get(target_range)
 
@@ -274,7 +313,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     pass
 
 
-def generate_member_list(credentials: Credentials, file_id: str, sheet_index_matches: int, member_list_config: Dict[str, Any]):
+def generate_member_list(credentials: Credentials, file_id: str, sheet_index_matches: int, member_list_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、出場メンバー届を生成する
 
     :param credentials: Google の認証情報
@@ -286,6 +325,10 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     :param member_list_config: 勝敗・ポイント記入シートの参照関係設定
     :type member_list_config: Dict[str, Any]
     """
+
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
+
     gc = gspread.authorize(credentials)
 
     book = gc.open_by_key(file_id)
@@ -297,6 +340,13 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     new_member_lists = []
 
     for i, value in enumerate(values):
+
+        if i < offset:
+            continue
+
+        if i >= limit:
+            break
+
         member_lists = []
         for j in range(2):
 
@@ -354,8 +404,8 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
 
         new_member_lists.append(member_lists)
 
-    start = gsutils.rowcol_to_a1(3, 5)
-    end = gsutils.rowcol_to_a1(2+len(new_member_lists), 6)
+    start = gsutils.rowcol_to_a1(3+offset, 5)
+    end = gsutils.rowcol_to_a1(2+len(new_member_lists)+offset, 6)
     target_range = f'{start}:{end}'
     lists = sheet_matches.get(target_range)
 
@@ -368,7 +418,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
 
 
 def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_matches: int,
-                       judge_num: int, staff_num: int, aggregate_config: Dict[str, Any]):
+                       judge_num: int, staff_num: int, aggregate_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、集計用紙を生成する
 
     :param credentials: Google の認証情報
@@ -384,6 +434,10 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
     :param aggregate_config: 勝敗・ポイント記入シートの参照関係設定
     :type aggregate_config: Dict[str, Any]
     """
+
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
+
     gc = gspread.authorize(credentials)
 
     book = gc.open_by_key(file_id)
@@ -396,6 +450,12 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
     pattern = r'=HYPERLINK\("https://docs\.google\.com/spreadsheets/d/(.*?)","(.*?)"\)'
 
     for i, value in enumerate(values):
+
+        if i < offset:
+            continue
+
+        if i >= limit:
+            break
 
         new_book = gc.copy(aggregate_config['template'])
         new_aggregates.append(new_book.url)
@@ -459,8 +519,8 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
 
         print(f"{aggregate_config['title']} {value[0]}")
 
-    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+9)
-    end = gsutils.rowcol_to_a1(2+len(new_aggregates), 6+judge_num+staff_num+9)
+    start = gsutils.rowcol_to_a1(3+offset, 6+judge_num+staff_num+9)
+    end = gsutils.rowcol_to_a1(2+len(new_aggregates)+offset, 6+judge_num+staff_num+9)
     sheet_matches.batch_update([
         {'range': f'{start}:{end}', 'values': [[f'=HYPERLINK("{v}","Link")'] for v in new_aggregates]}
     ], value_input_option='USER_ENTERED')
@@ -469,7 +529,7 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
 
 
 def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches: int,
-                    judge_num: int, staff_num: int, advice_config: Dict[str, Any]):
+                    judge_num: int, staff_num: int, advice_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、アドバイスシートを生成する
 
     :param credentials: Google の認証情報
@@ -485,6 +545,10 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
     :param advice_config: 勝敗・ポイント記入シートの参照関係設定
     :type advice_config: Dict[str, Any]
     """
+
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
+
     gc = gspread.authorize(credentials)
 
     book = gc.open_by_key(file_id)
@@ -496,6 +560,12 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
     new_advice = []
 
     for i, value in enumerate(values):
+
+        if i < offset:
+            continue
+
+        if i >= limit:
+            break
 
         advice_list = []
 
@@ -569,8 +639,8 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
 
         new_advice.append(advice_list)
 
-    start = gsutils.rowcol_to_a1(3, 6+judge_num+staff_num+10)
-    end = gsutils.rowcol_to_a1(2+len(new_advice), 6+judge_num+staff_num+11)
+    start = gsutils.rowcol_to_a1(3+offset, 6+judge_num+staff_num+10)
+    end = gsutils.rowcol_to_a1(2+len(new_advice)+offset, 6+judge_num+staff_num+11)
 
     new_values = [[f'=HYPERLINK("{col}","Link")' for col in row] for row in new_advice]
     sheet_matches.batch_update([
@@ -581,7 +651,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
 
 
 def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int,
-                judge_num: int, staff_num: int, api_key: Dict[str, str]):
+                judge_num: int, staff_num: int, api_key: Dict[str, str], **kwargs):
     """Zoomミーティングとライブストリーミングの関連付けを行う
 
     :param credentials: Google の認証情報
@@ -598,6 +668,10 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
     :type api_key: Dict[str, str]
     :raises RuntimeError: 関連付けに失敗した場合に例外を送出
     """
+
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
+
     gc = gspread.authorize(credentials)
 
     book = gc.open_by_key(file_id)
@@ -608,7 +682,14 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
 
     client = ZoomClient(api_key['api-key'], api_key['api-secret'])
 
-    for value in values:
+    for i, value in enumerate(values):
+
+        if i < offset:
+            continue
+
+        if i >= limit:
+            break
+
         meeting_id = value[5+judge_num+staff_num+4]
         stream_url = value[5+judge_num+staff_num+6]
         stream_key = value[5+judge_num+staff_num+7]
@@ -627,7 +708,7 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
 
 
 def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
-                  judge_num: int, ballot_config: Dict[str, Any]):
+                  judge_num: int, ballot_config: Dict[str, Any], **kwargs):
     """対戦表の変更点を勝敗・ポイント記入シートに反映する
 
     :param credentials: Google の認証情報
@@ -643,6 +724,10 @@ def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: i
     :param ballot_config: 勝敗・ポイント記入シートの参照関係設定
     :type ballot_config: Dict[str, Any]
     """
+
+    offset = kwargs['offset'] if 'offset' in kwargs else 0
+    limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
+
     gc = gspread.authorize(credentials)
 
     book = gc.open_by_key(file_id)
@@ -655,6 +740,12 @@ def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: i
     pattern = r'=HYPERLINK\("https://docs\.google\.com/spreadsheets/d/(.*?)","(.*?)"\)'
 
     for i, value in enumerate(values):
+
+        if i < offset:
+            continue
+
+        if i >= limit:
+            break
 
         match = re.match(pattern, value[4])
         if match:
@@ -753,6 +844,8 @@ def main():
         'update-live',
         'update-ballot',
     ], help='Command')
+    parser.add_argument('-o', '--offset', type=int, default=0)
+    parser.add_argument('-l', '--limit', type=int, default=sys.maxsize)
     args = parser.parse_args()
 
     scope = [
@@ -767,21 +860,21 @@ def main():
         credentials = ServiceAccountCredentials.from_json_keyfile_name(cfg['auth']['key_file'], scope)
 
         if args.command == 'generate-room':
-            generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], cfg['staff_num'], key, settings)
+            generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], cfg['staff_num'], key, settings, offset=args.offset, limit=args.limit)
         elif args.command == 'clear-room':
-            clear_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key)
+            clear_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, args.offset, limit=args.limit)
         elif args.command == 'generate-ballot':
-            generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
+            generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'], offset=args.offset, limit=args.limit)
         elif args.command == 'generate-member-list':
-            generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['member_list'])
+            generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['member_list'], offset=args.offset, limit=args.limit)
         elif args.command == 'generate-aggregate':
-            generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'])
+            generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'], offset=args.offset, limit=args.limit)
         elif args.command == 'generate-advice':
-            generate_advice(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['advice'])
+            generate_advice(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['advice'], offset=args.offset, limit=args.limit)
         elif args.command == 'update-live':
-            update_live(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key)
+            update_live(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, offset=args.offset, limit=args.limit)
         elif args.command == 'update-ballot':
-            update_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'])
+            update_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'], offset=args.offset, limit=args.limit)
 
         print('Complete.')
 
