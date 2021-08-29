@@ -146,13 +146,15 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
             if i >= limit:
                 break
 
-            try:
-                response = client.raw.get_all_pages(f'/meetings/{id}')
-            except zoom_error.NotFound:
-                continue
-            title = response['topic']
-            response = client.raw.delete(f'/meetings/{id}')
-            print(title)
+            if id:
+                try:
+                    response = client.raw.get_all_pages(f'/meetings/{id}')
+                except zoom_error.NotFound:
+                    continue
+                title = response['topic']
+                response = client.raw.delete(f'/meetings/{id}')
+                print(title)
+
             count += 1
 
         return count
@@ -231,6 +233,10 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
         if i >= limit:
             break
 
+        if not value[4] or not value[5]:
+            new_ballots.append([None]*judge_num)
+            continue
+
         ballots = []
         for j in range(judge_num):
 
@@ -305,7 +311,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     judges = sheet_matches.get(target_range)
 
     if(len(judges)) > 0:
-        new_values = [[f'=HYPERLINK("{col}","{judges[i][j]}")' for j, col in enumerate(row)] for i, row in enumerate(new_ballots)]
+        new_values = [[f'=HYPERLINK("{col}","{judges[i][j]}")' if col else f'{judges[i][j]}' for j, col in enumerate(row)] for i, row in enumerate(new_ballots)]
         sheet_matches.batch_update([
             {'range': f'{start}:{end}', 'values': new_values}
         ], value_input_option='USER_ENTERED')
@@ -351,6 +357,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
         for j in range(2):
 
             if not value[4+j]:
+                member_lists.append(None)
                 continue
 
             side = '肯定' if j == 0 else '否定'
@@ -409,7 +416,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     target_range = f'{start}:{end}'
     lists = sheet_matches.get(target_range)
 
-    new_values = [[f'=HYPERLINK("{col}","{lists[i][j]}")' for j, col in enumerate(row)] for i, row in enumerate(new_member_lists)]
+    new_values = [[f'=HYPERLINK("{col}","{lists[i][j]}")' if col else f'{lists[i][j]}' for j, col in enumerate(row)] for i, row in enumerate(new_member_lists)]
     sheet_matches.batch_update([
         {'range': f'{start}:{end}', 'values': new_values}
     ], value_input_option='USER_ENTERED')
@@ -456,6 +463,10 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
 
         if i >= limit:
             break
+
+        if not values[4] or not values[5]:
+            new_aggregates.append(None)
+            continue
 
         new_book = gc.copy(aggregate_config['template'])
         new_aggregates.append(new_book.url)
@@ -522,7 +533,7 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
     start = gsutils.rowcol_to_a1(3+offset, 6+judge_num+staff_num+9)
     end = gsutils.rowcol_to_a1(2+len(new_aggregates)+offset, 6+judge_num+staff_num+9)
     sheet_matches.batch_update([
-        {'range': f'{start}:{end}', 'values': [[f'=HYPERLINK("{v}","Link")'] for v in new_aggregates]}
+        {'range': f'{start}:{end}', 'values': [[f'=HYPERLINK("{v}","Link")' if v else ''] for v in new_aggregates]}
     ], value_input_option='USER_ENTERED')
 
     pass
@@ -572,6 +583,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
         for j in range(2):
 
             if not value[4+j]:
+                advice_list.append(None)
                 continue
 
             side = '肯定' if j == 0 else '否定'
@@ -642,7 +654,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
     start = gsutils.rowcol_to_a1(3+offset, 6+judge_num+staff_num+10)
     end = gsutils.rowcol_to_a1(2+len(new_advice)+offset, 6+judge_num+staff_num+11)
 
-    new_values = [[f'=HYPERLINK("{col}","Link")' for col in row] for row in new_advice]
+    new_values = [[f'=HYPERLINK("{col}","Link")' if col else '' for col in row] for row in new_advice]
     sheet_matches.batch_update([
         {'range': f'{start}:{end}', 'values': new_values}
     ], value_input_option='USER_ENTERED')
@@ -746,6 +758,9 @@ def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: i
 
         if i >= limit:
             break
+
+        if not value[4] or not value[5]:
+            continue
 
         match = re.match(pattern, value[4])
         if match:
