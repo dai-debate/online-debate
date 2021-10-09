@@ -219,7 +219,8 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     if offset <= 0:
         if row_count > 1:
             sheet_vote.delete_rows(2, row_count)
-        sheet_vote = WorksheetEx.cast(book.get_worksheet(sheet_index_vote))
+            sheet_vote = WorksheetEx.cast(book.get_worksheet(sheet_index_vote))
+            row_count = len(sheet_vote.col_values(1))
 
     votes = []
     new_ballots = []
