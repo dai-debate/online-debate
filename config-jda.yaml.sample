@@ -6,10 +6,10 @@ sheets:
   matches: 0
   entries: 1
   judges: 2
-  staff: ~
-  vote: 3
-  result: 4
-  score: 5
+  staff: 3
+  vote: 4
+  result: 5
+  score: 6
 
 prefix: "<大会名> "
 
