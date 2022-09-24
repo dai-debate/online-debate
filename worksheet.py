@@ -1,5 +1,5 @@
 from typing import Union, List, Dict, Any
-from gspread.models import Worksheet
+from gspread import Worksheet
 import gspread.utils as gsutils
 
 
