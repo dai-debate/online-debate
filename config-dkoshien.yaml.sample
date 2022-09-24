@@ -6,13 +6,15 @@ sheets:
   matches: 0
   entries: 1
   judges: 2
-  vote: 3
-  result: 4
-  score: 5
+  staff: 3
+  vote: 4
+  result: 5
+  score: 6
 
 prefix: "<大会名> "
 
 judge_num: 3
+staff_num: 1
 
 ballot:
   template: 1hiba7wnR3u0dffsJmQTKSC-usT2_84OAk-xZ4VHhAYg
@@ -20,19 +22,75 @@ ballot:
   folder: <folder id>
 
   to_vote:
-    - ["C4", 0]
     - ["C7", 3]
     - ["I12", 5]
     - ["C8", 6]
     - ["I19", 8]
-    - ["E36", 9]
-    - ["E25", 10]
-    - ["E38", 11]
+    - ["C34", 9]
+    - ["E36", 10]
 
   to_ballot:
-    - [0, "C4"]
+    - ["B1", "I3"]
+    - [0, "C5"]
     - [1, "E5"]
     - [4, "C7"]
     - [5, "C8"]
-    - [[4,5], "E36"]
-    - [6, "H4", true]
+    - [6, "H5", true]
+
+member_list:
+  template: 1KifmaqP6p9_BWwJWQ5VKSH1EmzBJDmtE1Xo6AidSk9U
+  title: "<大会名> 出場メンバー届"
+  folder: <folder id>
+
+  to_list:
+    - ["B1", "K3"]
+    - [0, "D4"]
+    - [1, "F4"]
+    - [4, "F6", true]
+    - side: "B6"
+
+aggregate:
+  template: 110TumZZkPah1Me__3fzTAcd7u7MKunLSNUqWyprVMJc
+  title: "<大会名> 主審用集計用紙"
+  folder: <folder id>
+
+  to_aggregate:
+    - [0, "C4"]
+    - [1, "E4"]
+    - [4, "C6"]
+    - [5, "C7"]
+    - ["B1", "I3"]
+
+  link:
+    - ["C12", "C13", "POINT"]
+    - ["D12", "D13", "POINT"]
+    - ["E12", "E13", "POINT"]
+    - ["F12", "F13", "POINT"]
+    - ["G12", "G13", "POINT"]
+    - ["H12", "H13", "POINT"]
+    - ["C19", "C16", "POINT"]
+    - ["D19", "D16", "POINT"]
+    - ["E19", "E16", "POINT"]
+    - ["F19", "F16", "POINT"]
+    - ["G19", "G16", "POINT"]
+    - ["H19", "H16", "POINT"]
+    - ["C34", "I6", "VOTE_AFF"]
+    - ["C34", "I7", "VOTE_NEG"]
+
+advice:
+  template: 1a1gzCEF-hspODhsypp_EzOx7sRUFacBpiIp_VZv_U7Y
+  title: "<大会名> アドバイスシート"
+  folder: <folder id>
+
+  to_advice:
+    - [0, "C4"]
+    - [1, "E4"]
+    - ["B1", "H3"]
+    - aff:
+        - "B6"
+        - [4, "E6"]
+        - [7, "G4"]
+      neg:
+        - "B6"
+        - [5, "E6"]
+        - [8, "G4"]
