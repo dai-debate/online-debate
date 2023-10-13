@@ -3,6 +3,8 @@ participant_video: false
 mute_upon_entry: true
 use_pmi": false
 auto_recording: "cloud"
-waiting_room: true
+waiting_room: false
 meeting_authentication: false
 allow_multiple_device: true
+join_before_post: true
+jbh_time: 15
