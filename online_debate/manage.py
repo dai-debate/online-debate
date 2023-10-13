@@ -13,14 +13,14 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from oauth2client.client import Credentials
 from oauth2client.service_account import ServiceAccountCredentials
-from pyzoom import ZoomClient
-from pyzoom import err as zoom_error
+
 from typing import List, Dict, Any
+from zoom import Zoom
 from worksheet import WorksheetEx
 
 
 def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
-                  prefix: str, judge_num: int, staff_num: int, api_key: Dict[str, str], settings: Dict[str, Any], **kwargs):
+                  prefix: str, judge_num: int, staff_num: int, auth_key: Dict[str, str], settings: Dict[str, Any], **kwargs):
     """試合会場を生成する
 
     :param credentials: Google の認証情報
@@ -35,15 +35,11 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
     :type judge_num: int
     :param staff_num: スタッフの人数
     :type staff_num: int
-    :param api_key: Zoom の APIキー/APIシークレット
-    :type api_key: Dict[str, str]
+    :param auth_key: Zoom の APIキー/APIシークレット
+    :type auth_key: Dict[str, str]
     :param settings: Zoom ミーティングの設定情報
     :type settings: Dict[str, Any]
     """
-    def get_users(client: ZoomClient) -> List[Dict[str, Any]]:
-        response = client.raw.get_all_pages('/users', query={'status': 'active'})
-        return response['users']
-
     def find_user(users: List[Dict[str, Any]], key: str, value: Any) -> List[Dict[str, Any]]:
         users = list(filter(lambda x: x[key] == value, users))
         return users
@@ -65,9 +61,8 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
     year, month, day = values.pop(0)[1].split('/')
     values.pop(0)
 
-    client = ZoomClient(api_key['api-key'], api_key['api-secret'])
-
-    users = get_users(client)
+    client = Zoom(auth_key['client-id'], auth_key['client-secret'], auth_key['account-id'])
+    users = client.get_users()
 
     meetings = []
 
@@ -85,7 +80,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
         start_time = datetime(int(year), int(month), int(day), int(hour_s), int(min_s))
         end_time = datetime(int(year), int(month), int(day), int(hour_e), int(min_e))
         duration = math.ceil((end_time - start_time).total_seconds()/60.0)
-        userId = value[5+judge_num+staff_num+1] if len(find_user(users, 'email', value[5+judge_num+staff_num+1])) > 0 else None
+        user_id = value[5+judge_num+staff_num+1] if len(find_user(users, 'email', value[5+judge_num+staff_num+1])) > 0 else None
         url = value[5+judge_num+staff_num+3]
         meeting_id = value[5+judge_num+staff_num+4]
         password = value[5+judge_num+staff_num+5]
@@ -103,7 +98,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
                 'agenda': prefix + matchName,
                 'settings': settings
             }
-            response = client.raw.post(f'/users/{userId}/meetings', body=request)
+            response = client.create_meeting(user_id, request)
             if response.ok:
                 data = response.json()
                 meetings.append([data['join_url'], f"'{data['id']}", f"'{data['password']}"])
@@ -120,7 +115,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
 
 
 def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
-               judge_num: int, staff_num: int, api_key: Dict[str, str], **kwargs):
+               judge_num: int, staff_num: int, auth_key: Dict[str, str], **kwargs):
     """試合会場を生成する
 
     :param credentials: Google の認証情報
@@ -133,10 +128,10 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
     :type judge_num: int
     :param staff_num: スタッフの人数
     :type staff_num: int
-    :param api_key: Zoom の APIキー/APIシークレット
-    :type api_key: Dict[str, str]
+    :param auth_key: Zoom の APIキー/APIシークレット
+    :type auth_key: Dict[str, str]
     """
-    def delete_meetings(client: ZoomClient, ids: List[str], offset: int, limit: int):
+    def delete_meetings(client: Zoom, ids: List[str], offset: int, limit: int):
         count = 0
         for i, id in enumerate(ids):
 
@@ -147,13 +142,9 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
                 break
 
             if id:
-                try:
-                    response = client.raw.get_all_pages(f'/meetings/{id}')
-                except zoom_error.NotFound:
-                    continue
-                title = response['topic']
-                response = client.raw.delete(f'/meetings/{id}')
-                print(title)
+                response = client.get_meeting(id)
+                if client.delete_meeting(id):
+                    print(f'delete {response["topic"]}')
 
             count += 1
 
@@ -171,8 +162,7 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
     values = values[2:]
     ids = [v[6+judge_num+staff_num+2+1] for v in values]
 
-    client = ZoomClient(api_key['api-key'], api_key['api-secret'])
-
+    client = Zoom(auth_key['client-id'], auth_key['client-secret'], auth_key['account-id'])
     count = delete_meetings(client, ids, offset, limit)
 
     update_values = [['']*3 for i in range(count)]
@@ -311,7 +301,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     target_range = f'{start}:{end}' if judge_num > 1 or len(new_ballots) > 2 else f'{start}'
     judges = sheet_matches.get(target_range)
 
-    if(len(judges)) > 0:
+    if (len(judges)) > 0:
         new_values = [[f'=HYPERLINK("{col}","{judges[i][j]}")' if col else f'{judges[i][j]}' for j, col in enumerate(row)] for i, row in enumerate(new_ballots)]
         sheet_matches.batch_update([
             {'range': f'{start}:{end}', 'values': new_values}
@@ -664,7 +654,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
 
 
 def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int,
-                judge_num: int, staff_num: int, api_key: Dict[str, str], **kwargs):
+                judge_num: int, staff_num: int, auth_key: Dict[str, str], **kwargs):
     """Zoomミーティングとライブストリーミングの関連付けを行う
 
     :param credentials: Google の認証情報
@@ -677,8 +667,8 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
     :type judge_num: int
     :param staff_num: スタッフの人数
     :type staff_num: int
-    :param api_key: Zoom の APIキー/APIシークレット
-    :type api_key: Dict[str, str]
+    :param auth_key: Zoom の APIキー/APIシークレット
+    :type auth_key: Dict[str, str]
     :raises RuntimeError: 関連付けに失敗した場合に例外を送出
     """
 
@@ -693,7 +683,7 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
     values = sheet_matches.get_all_values()
     values = values[2:]
 
-    client = ZoomClient(api_key['api-key'], api_key['api-secret'])
+    client = Zoom(auth_key['client-id'], auth_key['client-secret'], auth_key['account-id'])
 
     for i, value in enumerate(values):
 
@@ -709,12 +699,7 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
         page_url = value[5+judge_num+staff_num+8]
 
         if meeting_id and stream_url and stream_key and page_url:
-            response = client.raw.patch(f'/meetings/{meeting_id}/livestream', body={
-                'stream_url': stream_url,
-                'stream_key': stream_key,
-                'page_url': page_url,
-            })
-            if not response.ok:
+            if not client.update_livestream(meeting_id, stream_url, stream_key, page_url):
                 raise RuntimeError(f'Update live failed: {meeting_id}')
         print(value[0])
     pass
@@ -878,7 +863,7 @@ def main():
         if args.command == 'generate-room':
             generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], cfg['staff_num'], key, settings, offset=args.offset, limit=args.limit)
         elif args.command == 'clear-room':
-            clear_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, args.offset, limit=args.limit)
+            clear_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, offset=args.offset, limit=args.limit)
         elif args.command == 'generate-ballot':
             generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'], offset=args.offset, limit=args.limit)
         elif args.command == 'generate-member-list':
