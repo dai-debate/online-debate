@@ -6,8 +6,8 @@ import gspread.utils as gsutils
 class WorksheetEx(Worksheet):
     """gspread.models.Worksheet の拡張"""
 
-    def __init__(self, spreadsheet, properties):
-        super.__init__(spreadsheet, properties)
+    def __init__(self, spreadsheet, properties, spreadsheet_id=None, client=None):
+        super.__init__(spreadsheet, properties, spreadsheet_id, client)
 
     @classmethod
     def cast(cls, obj: Worksheet):
