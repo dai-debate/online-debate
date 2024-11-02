@@ -7,10 +7,11 @@ import math
 import time
 import re
 import sys
+from pathlib import Path
 import gspread
 import gspread.utils as gsutils
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
 from oauth2client.client import Credentials
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -19,7 +20,21 @@ from zoom import Zoom
 from worksheet import WorksheetEx
 
 
-def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
+INTERVAL=0.1
+
+
+def get_gauth(json_key_file: Path):
+    scope = [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+    ]
+    gauth = GoogleAuth()
+    gauth.credentials = ServiceAccountCredentials.from_json_keyfile_name(json_key_file, scope)
+
+    return gauth
+
+
+def generate_room(json_key_file: Path, file_id: str, sheet_index: int,
                   prefix: str, judge_num: int, staff_num: int, auth_key: Dict[str, str], settings: Dict[str, Any], **kwargs):
     """試合会場を生成する
 
@@ -51,8 +66,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
-
+    gc = gspread.auth.service_account(json_key_file)
     book = gc.open_by_key(file_id)
     sheet = WorksheetEx.cast(book.get_worksheet(sheet_index))
 
@@ -114,7 +128,7 @@ def generate_room(credentials: Credentials, file_id: str, sheet_index: int,
     ], value_input_option='USER_ENTERED')
 
 
-def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
+def clear_room(json_key_file: Path, file_id: str, sheet_index: int,
                judge_num: int, staff_num: int, auth_key: Dict[str, str], **kwargs):
     """試合会場を生成する
 
@@ -153,7 +167,7 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.auth.service_account(json_key_file)
 
     book = gc.open_by_key(file_id)
     sheet = WorksheetEx.cast(book.get_worksheet(sheet_index))
@@ -175,7 +189,7 @@ def clear_room(credentials: Credentials, file_id: str, sheet_index: int,
     pass
 
 
-def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
+def generate_ballot(json_key_file: Path, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
                     judge_num: int, ballot_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、勝敗・ポイント記入シートを生成する
 
@@ -196,7 +210,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.auth.service_account(json_key_file)
 
     book = gc.open_by_key(file_id)
     sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
@@ -253,15 +267,17 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
                 ]
             })
 
-            gauth = GoogleAuth()
-            gauth.credentials = credentials
+            gauth = get_gauth(json_key_file)
 
             gdrive = GoogleDrive(gauth)
             gfile = gdrive.CreateFile({'id': new_book.id})
+            time.sleep(INTERVAL)
             gfile.FetchMetadata(fetch_all=True)
+            time.sleep(INTERVAL)
 
             gfile['parents'] = [{'id': ballot_config['folder']}]
             gfile.Upload()
+            time.sleep(INTERVAL)
 
             row = row_count + actual_judge_num
             vote = [''] * 11
@@ -288,7 +304,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
                 elif type(link[0]) == list:
                     options = [value[x] for x in link[0]]
                     new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
-                time.sleep(1)
+                time.sleep(INTERVAL)
 
             print(f"{ballot_config['title']} {value[0]} #{j}")
 
@@ -310,7 +326,7 @@ def generate_ballot(credentials: Credentials, file_id: str, sheet_index_matches:
     pass
 
 
-def generate_member_list(credentials: Credentials, file_id: str, sheet_index_matches: int, member_list_config: Dict[str, Any], **kwargs):
+def generate_member_list(json_key_file: Path, file_id: str, sheet_index_matches: int, member_list_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、出場メンバー届を生成する
 
     :param credentials: Google の認証情報
@@ -326,7 +342,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.auth.service_account(json_key_file)
 
     book = gc.open_by_key(file_id)
     sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
@@ -370,15 +386,17 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
                 ]
             })
 
-            gauth = GoogleAuth()
-            gauth.credentials = credentials
+            gauth = get_gauth(json_key_file)
 
             gdrive = GoogleDrive(gauth)
             gfile = gdrive.CreateFile({'id': new_book.id})
+            time.sleep(INTERVAL)
             gfile.FetchMetadata(fetch_all=True)
+            time.sleep(INTERVAL)
 
             gfile['parents'] = [{'id': member_list_config['folder']}]
             gfile.Upload()
+            time.sleep(INTERVAL)
 
             for link in member_list_config['to_list']:
                 if type(link) == list:
@@ -396,7 +414,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
                 elif type(link) == dict:
                     if 'side' in link:
                         new_sheet.update_acell(link['side'], side)
-                time.sleep(1)
+                time.sleep(INTERVAL)
 
             print(f"{member_list_config['title']} {value[0]} {side}")
 
@@ -415,7 +433,7 @@ def generate_member_list(credentials: Credentials, file_id: str, sheet_index_mat
     pass
 
 
-def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_matches: int,
+def generate_aggregate(json_key_file: Path, file_id: str, sheet_index_matches: int,
                        judge_num: int, staff_num: int, aggregate_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、集計用紙を生成する
 
@@ -436,7 +454,7 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.auth.service_account(json_key_file)
 
     book = gc.open_by_key(file_id)
     sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
@@ -476,15 +494,17 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
             ]
         })
 
-        gauth = GoogleAuth()
-        gauth.credentials = credentials
+        gauth = get_gauth(json_key_file)
 
         gdrive = GoogleDrive(gauth)
         gfile = gdrive.CreateFile({'id': new_book.id})
+        time.sleep(INTERVAL)
         gfile.FetchMetadata(fetch_all=True)
+        time.sleep(INTERVAL)
 
         gfile['parents'] = [{'id': aggregate_config['folder']}]
         gfile.Upload()
+        time.sleep(INTERVAL)
 
         for link in aggregate_config['to_aggregate']:
             if type(link) == list:
@@ -496,7 +516,7 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
                 elif type(link[0]) == list:
                     options = [value[x] for x in link[0]]
                     new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
-            time.sleep(1)
+            time.sleep(INTERVAL)
 
         links = [''] * len(aggregate_config['link'])
         for j in range(judge_num):
@@ -514,10 +534,16 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
                     links[k] = links[k] + f'{"=" if j==0 else "+"}IF(IMPORTRANGE("{ballot}","{link[0]}")="肯定",1,0)'
                 elif link[2] == 'VOTE_NEG':
                     links[k] = links[k] + f'{"=" if j==0 else "+"}IF(IMPORTRANGE("{ballot}","{link[0]}")="否定",1,0)'
+                elif link[2] == 'CONFIRM':
+                    if j==0:
+                        links[k] = '=IF(AND('
+                    links[k] = links[k] + f'IMPORTRANGE("{ballot}","{link[0]}")="確定",'
+                    if j==(judge_num-1):
+                        links[k] = links[k] + '),"確定","未確定あり")'
 
         for k, link in enumerate(aggregate_config['link']):
             new_sheet.update_acell(link[1], links[k])
-            time.sleep(1)
+            time.sleep(INTERVAL)
 
         print(f"{aggregate_config['title']} {value[0]}")
 
@@ -530,7 +556,7 @@ def generate_aggregate(credentials: Credentials, file_id: str, sheet_index_match
     pass
 
 
-def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches: int,
+def generate_advice(json_key_file: Path, file_id: str, sheet_index_matches: int,
                     judge_num: int, staff_num: int, advice_config: Dict[str, Any], **kwargs):
     """対戦表に基づき、アドバイスシートを生成する
 
@@ -551,7 +577,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.auth.service_account(json_key_file)
 
     book = gc.open_by_key(file_id)
     sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
@@ -596,8 +622,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
                 ]
             })
 
-            gauth = GoogleAuth()
-            gauth.credentials = credentials
+            gauth = get_gauth(json_key_file)
 
             gdrive = GoogleDrive(gauth)
             gfile = gdrive.CreateFile({'id': new_book.id})
@@ -636,7 +661,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
                                 new_sheet.update_acell(x, side)
                             elif type(x) == list:
                                 new_sheet.update_acell(x[1], value[x[0]])
-                time.sleep(1)
+                time.sleep(INTERVAL)
 
             print(f"{advice_config['title']} {value[0]} {side}")
 
@@ -653,7 +678,7 @@ def generate_advice(credentials: Credentials, file_id: str, sheet_index_matches:
     pass
 
 
-def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int,
+def update_live(json_key_file: Path, file_id: str, sheet_index_matches: int,
                 judge_num: int, staff_num: int, auth_key: Dict[str, str], **kwargs):
     """Zoomミーティングとライブストリーミングの関連付けを行う
 
@@ -675,7 +700,7 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.auth.service_account(json_key_file)
 
     book = gc.open_by_key(file_id)
     sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
@@ -705,7 +730,7 @@ def update_live(credentials: Credentials, file_id: str, sheet_index_matches: int
     pass
 
 
-def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
+def update_ballot(json_key_file: Path, file_id: str, sheet_index_matches: int, sheet_index_vote: int,
                   judge_num: int, ballot_config: Dict[str, Any], **kwargs):
     """対戦表の変更点を勝敗・ポイント記入シートに反映する
 
@@ -726,7 +751,7 @@ def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: i
     offset = kwargs['offset'] if 'offset' in kwargs else 0
     limit = kwargs['limit'] if 'limit' in kwargs else sys.maxsize
 
-    gc = gspread.authorize(credentials)
+    gc = gspread.auth.service_account(json_key_file)
 
     book = gc.open_by_key(file_id)
     sheet_matches = WorksheetEx.cast(book.get_worksheet(sheet_index_matches))
@@ -780,8 +805,7 @@ def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: i
                     ]
                 })
 
-                gauth = GoogleAuth()
-                gauth.credentials = credentials
+                gauth = get_gauth(json_key_file)
 
                 gdrive = GoogleDrive(gauth)
                 gfile = gdrive.CreateFile({'id': new_book.id})
@@ -819,7 +843,7 @@ def update_ballot(credentials: Credentials, file_id: str, sheet_index_matches: i
                     elif type(link[0]) == list:
                         options = [value[x] for x in link[0]]
                         new_sheet.set_data_validation(link[1], WorksheetEx.conditiontype.ONE_OF_LIST, options, strict=True, custom_ui=True)
-                    time.sleep(1)
+                    time.sleep(INTERVAL)
 
                 sheet_matches.update_cell(3+i, 7+j, f'=HYPERLINK("{new_book.url}","{value[6+j]}")')
 
@@ -858,24 +882,24 @@ def main():
         cfg = yaml.load(ifp1, Loader=yaml.SafeLoader)
         key = yaml.load(ifp2, Loader=yaml.SafeLoader)
         settings = yaml.load(ifp3, Loader=yaml.SafeLoader)
-        credentials = ServiceAccountCredentials.from_json_keyfile_name(cfg['auth']['key_file'], scope)
+        json_key_file = Path(cfg['auth']['key_file'])
 
         if args.command == 'generate-room':
-            generate_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], cfg['staff_num'], key, settings, offset=args.offset, limit=args.limit)
+            generate_room(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['prefix'], cfg['judge_num'], cfg['staff_num'], key, settings, offset=args.offset, limit=args.limit)
         elif args.command == 'clear-room':
-            clear_room(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, offset=args.offset, limit=args.limit)
+            clear_room(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, offset=args.offset, limit=args.limit)
         elif args.command == 'generate-ballot':
-            generate_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'], offset=args.offset, limit=args.limit)
+            generate_ballot(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'], offset=args.offset, limit=args.limit)
         elif args.command == 'generate-member-list':
-            generate_member_list(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['member_list'], offset=args.offset, limit=args.limit)
+            generate_member_list(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['member_list'], offset=args.offset, limit=args.limit)
         elif args.command == 'generate-aggregate':
-            generate_aggregate(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'], offset=args.offset, limit=args.limit)
+            generate_aggregate(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['aggregate'], offset=args.offset, limit=args.limit)
         elif args.command == 'generate-advice':
-            generate_advice(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['advice'], offset=args.offset, limit=args.limit)
+            generate_advice(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], cfg['advice'], offset=args.offset, limit=args.limit)
         elif args.command == 'update-live':
-            update_live(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, offset=args.offset, limit=args.limit)
+            update_live(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['judge_num'], cfg['staff_num'], key, offset=args.offset, limit=args.limit)
         elif args.command == 'update-ballot':
-            update_ballot(credentials, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'], offset=args.offset, limit=args.limit)
+            update_ballot(json_key_file, cfg['file_id'], cfg['sheets']['matches'], cfg['sheets']['vote'], cfg['judge_num'], cfg['ballot'], offset=args.offset, limit=args.limit)
 
         print('Complete.')
 

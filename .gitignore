@@ -2,8 +2,21 @@
 *.yaml
 *.yml
 tmp/
-__pycache__/
 rsts/_*/
 *.zip
 memo.txt
 sync.*
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+
+# VS Code config
+.scode/

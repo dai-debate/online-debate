@@ -79,7 +79,7 @@
   (設定ファイル名 (`*.yaml`) の部分は自身が作成したファイル名に適宜置き換えて下さい。)
 
   ```console
-  python manage.py -c config-dkoshien2021-practice.yaml generate-room
+  uv run manage.py -c config-dkoshien2021-practice.yaml generate-room
   ```
 
 * しばらく待って `Complete.` と表示されれば成功です。
@@ -95,7 +95,7 @@
   (設定ファイル名 (`*.yaml`) の部分は自身が作成したファイル名に適宜置き換えて下さい。)
 
   ```console
-  python manage.py -c config-dkoshien2021-practice.yaml generate-ballot
+  uv run manage.py -c config-dkoshien2021-practice.yaml generate-ballot
   ```
 
 * しばらく待って `Complete.` と表示されれば成功です。
