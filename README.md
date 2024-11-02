@@ -17,10 +17,11 @@
 
 本ツールを使用するには以下のものが必要となります。
 
-* PC (Windows 10 64bitで動作を確認していますが、macやLinuxでも動作できるはずです)
+* PC (Windows 11 64bitで動作を確認していますが、macやLinuxでも動作できるはずです)
 * [Git](https://git-scm.com/) または [GitHub Desktop](https://desktop.github.com/) (ツール一式の取得にZipアーカイブ形式を用いる場合は不要です)
 * テキストエディタ ([Visual Studio Code](https://code.visualstudio.com/)を推奨)
-* [Python](https://www.python.org/) (ver. 3.8.6 for Windowsで動作を確認)
+* [Python](https://www.python.org/) (ver. 3.13 で動作を確認)
+* [uv](https://github.com/astral-sh/uv) (パッケージマネージャー)
 * [Google アカウント](https://www.google.com/intl/ja/account/about/)
 * [Zoom アカウント](https://zoom.us/signup)
   * 本ツールの動作確認目的であれば、無償の基本ライセンスで構いませんが、実際の大会を行う場合はミーティングの時間制限を避けるため、プロ以上のライセンスを並行試合数分取得する必要があります。
@@ -45,7 +46,7 @@
 対戦スケジュール表と設定ファイルを編集した上で、コマンドプロンプトを開き以下のコマンドを実行します。
 
 ```console
-python manage.py -c config.yaml generate-room
+uv run manage.py -c config.yaml generate-room
 ```
 
 ### 投票・採点記入用シートの生成
@@ -53,7 +54,7 @@ python manage.py -c config.yaml generate-room
 対戦スケジュール表と設定ファイルを編集した上で、コマンドプロンプトを開き以下のコマンドを実行します。
 
 ```console
-python manage.py -c config.yaml generate-ballot
+uv run manage.py -c config.yaml generate-ballot
 ```
 
 ## 制限事項
