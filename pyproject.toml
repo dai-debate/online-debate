@@ -18,3 +18,8 @@ dev = [
     "colorama>=0.4.6",
     "sphinx>=8.2.3",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.12",
+]

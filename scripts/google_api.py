@@ -5,18 +5,14 @@ from pathlib import Path
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as OAuthRequest
 from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build as build_google_service
 from googleapiclient.errors import HttpError
 
 
-DEFAULET_SCOPES = [
-    'https://www.googleapis.com/auth/drive',
-    'https://www.googleapis.com/auth/spreadsheets',
-]
-
-
 def get_credentials(
-        path_client_secret: Path, path_token: Path = Path('google-auth-token.json'),
-        scopes: list[str] = DEFAULET_SCOPES):
+        path_client_secret: Path,
+        path_token: Path = Path('google-auth-token.json'),
+        scopes: list[str] | None = None):
 
     creds = None
     try:
@@ -38,3 +34,22 @@ def get_credentials(
         print(f'An error occurred: {err}', file=sys.stderr)
 
     return creds
+
+
+class Sheet:
+    def __init__(self, sheet_dict: dict):
+        properties: dict = sheet_dict.get('properties', {})
+        self.properties: dict = properties.get('gridProperties', {})
+        self.title: str = properties.get('title', '')
+        self.index: int = properties.get('index', 0)
+        pass
+
+
+class SpreadSheet:
+    def __init__(self, creds, spreadsheet_id: str):
+        self.service = build_google_service('sheets', 'v4', credentials=creds)
+        self.spreadsheet: dict = self.service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+
+        self.sheets: list[Sheet] = [Sheet(d) for d in self.spreadsheet.pop('sheets', {})]
+
+        pass
